@@ -1,4 +1,4 @@
-## Codes to maintain RNAIndel
+## RNAIndel maintenance
 
 #### refGene2refCodingExon
 Make a coding exon database in BED format
