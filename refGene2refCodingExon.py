@@ -83,7 +83,7 @@ def isoform_cdslen_dict(refgene):
                         coding_exon_i_start = cds_start
                     else:
                         coding_exon_i_start = start
-                    # ene
+                    # end
                     if this_is_i_th_coding_exon == total_num_of_exons:
                         coding_exon_i_end = cds_end
                     else:
@@ -200,7 +200,7 @@ def parse_refgene_line(line, iso_len_dict):
                     coding_exon_i_start = cds_start
                 else:
                     coding_exon_i_start = start
-                # ene
+                # end
                 if this_is_i_th_coding_exon == total_num_of_exons:
                     coding_exon_i_end = cds_end
                 else:
