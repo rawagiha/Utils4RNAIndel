@@ -9,22 +9,41 @@ parser.add_argument("-r", dest="refgene", required=True)
 args = parser.parse_args()
 
 # canonical chromosomes
-canonical = [str(i) for i in range(1, 23)] + ["X", "Y", "M"]
+# canonical = [str(i) for i in range(1, 23)] + ["X", "Y", "M"]
+
+
+def set_canonical_chroms(refgene):
+    chroms = []
+    with open(refgene) as f:
+        for line in f:
+            lst = line.rstrip().split("\t")
+            chrom = lst[2].replace("chr", "")
+            try:
+                chroms.append(str(int(chrom)))
+            except:
+                if chrom in ["X", "Y", "M", "MT"]:
+                    chroms.append(chrom)
+    chroms = list(set(chroms))
+    return chroms
 
 
 def main(refgene):
+    canonical = set_canonical_chroms(refgene)
+
     with open("refCodingExon.unsorted.bed", "w") as fo:
         header = (
             "chr\tstart\tend\tinfo\tstrand\tprev_exon_start|end\tnext_exon_start|end\n"
         )
         fo.write(header)
-        d = isoform_cdslen_dict(refgene)
+        d = isoform_cdslen_dict(refgene, canonical)
         with open(refgene) as fi:
             for line in fi:
-                try:
-                    fo.write(parse_refgene_line(line, d) + "\n")
-                except:
-                    pass
+                res = parse_refgene_line(line, d, canonical)
+                if res:
+                    #try:
+                        fo.write(parse_refgene_line(line, d, canonical) + "\n")
+                    #except:
+                    #    pass
 
     df = pd.read_csv("refCodingExon.unsorted.bed", sep="\t")
 
@@ -32,16 +51,15 @@ def main(refgene):
     df.sort_values("chr", inplace=True)
     df = df.groupby("chr").apply(pd.DataFrame.sort_values, "start")
 
-    df["chr"] = df.apply(format_chromosom, axis=1)
+    df["chr"] = df.apply(format_chromosom, canonical=canonical, axis=1)
 
     df.to_csv("refCodingExon.bed", sep="\t", index=False, header=False)
 
     sp.call(["rm", "refCodingExon.unsorted.bed"])
 
 
-def isoform_cdslen_dict(refgene):
-    """Makes a dict {RefSeq accession: len of cds}
-    """
+def isoform_cdslen_dict(refgene, canonical):
+    """Makes a dict {RefSeq accession: len of cds}"""
     d = {}
     with open(refgene) as f:
         for line in f:
@@ -133,33 +151,36 @@ def isoform_cdslen_dict(refgene):
     return d
 
 
-def format_chromosom(row):
-    if row["chr"] == 23:
+def format_chromosom(row, canonical):
+    can_len = len(canonical)
+    if row["chr"] == can_len - 2:
         return "chrX"
-    elif row["chr"] == 24:
+    elif row["chr"] == can_len - 1:
         return "chrY"
-    elif row["chr"] == 25:
+    elif row["chr"] == can_len:
         return "chrM"
     else:
         return "chr" + str(row["chr"])
 
 
-def parse_refgene_line(line, iso_len_dict):
+def parse_refgene_line(line, iso_len_dict, canonical):
     lst = line.rstrip().split("\t")
     acc = lst[1]
     chromosome = lst[2]
-
+    
     # remove non-canonicals and format chromosomes
     chr = chromosome.replace("chr", "")
+    
+    can_len = len(canonical)
     if chr not in canonical:
         return None
     if chr == "X":
-        chr = "23"
+        chr = str(can_len - 2)
     elif chr == "Y":
-        chr = "24"
+        chr = str(can_len - 1)
     elif chr == "M":
-        chr = "25"
-
+        chr = str(can_len)
+    
     strand = lst[3]
 
     # convert to 1-based coordinate for start
